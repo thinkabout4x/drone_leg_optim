@@ -1,4 +1,5 @@
-import scipy
+from scipy.optimize import differential_evolution
+from scipy.optimize import NonlinearConstraint
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -7,26 +8,31 @@ from matplotlib import animation
 
 class Four_bar:
 
-    def __init__(self, theta_init):
+    def __init__(self, params_init):
 
-        self.phi_my = math.radians(160)
-        self.theta_2 = theta_init
-        self.x_4_1 = 0.007
-        self.y_4_1 = 0.023
+        self.phi_my = params_init[0]
+        self.x_4_1 = params_init[1]
+        self.y_4_1 = params_init[2]
 
         self.phi_0 = 2*math.pi - self.phi_my
         self.theta_1 = -math.atan2(self.x_4_1, self.y_4_1)
 
-        self.x_1_0 = 0.1
-        self.y_1_0 = 0.045
+        self.x_1_0 = params_init[3]
+        self.y_1_0 = params_init[4]
         self.r_1 = math.sqrt(self.x_4_1*self.x_4_1+self.y_4_1*self.y_4_1)
-        self.r_2 = 0.07736
-        self.r_3 = 0.015
-        self.r_4 = 0.065
-        self.l_1 = 0.0325
+        self.r_2 = params_init[5]
+        self.r_3 = params_init[6]
+        self.r_4 = params_init[7]
+        self.l_1 = params_init[8]
         self.l_2 = math.sqrt(self.l_1*self.l_1+self.r_3*self.r_3-2*self.l_1*self.r_3*math.cos(self.phi_my))
+        self.theta_2 = params_init[9]
 
         self.points = self.mech_calc(self.theta_2)
+
+        print('s:', self.r_3)
+        print('l', self.r_2)
+        print('p', self.r_1)
+        print('q', self.r_4)
 
     def mech_calc(self, t_2):
         points = np.zeros((5, 2))
@@ -47,29 +53,113 @@ class Four_bar:
                      self.l_1 * math.sin(self.phi_0 + theta_3 + self.theta_1)]
         return points
 
-    def mech_draw(self, l_1, l_2, l_3):
-        l_1.set_data(self.points[:, 0], self.points[:, 1])
-        l_2.set_data([self.points[1, 0], self.points[3, 0]], [self.points[1, 1], self.points[3, 1]])
-        l_3.set_data([self.points[0, 0], self.points[4, 0]], [self.points[0, 1], self.points[4, 1]])
-        return [l_1, l_2, l_3]
+    def mech_draw(self, l_1_init, l_2_init, l_3_init):
+        l_1_init.set_data(self.points[:, 0], self.points[:, 1])
+        l_2_init.set_data([self.points[1, 0], self.points[3, 0]], [self.points[1, 1], self.points[3, 1]])
+        l_3_init.set_data([self.points[0, 0], self.points[4, 0]], [self.points[0, 1], self.points[4, 1]])
+        return [l_1_init, l_2_init, l_3_init]
 
 
-def animate(i, m, t_2, l_1, l_2, l_3):
+def animate(i, m, t_2, l_1_init, l_2_init, l_3_init):
     m.points = m.mech_calc(math.radians(t_2[i]))
-    return m.mech_draw(l_1, l_2, l_3)
+    return m.mech_draw(l_1_init, l_2_init, l_3_init)
+
+
+def de_mech_calc(params_init):
+    phi_my_init, x_4_1_init, y_4_1_init, x_1_0_init, y_1_0_init, r_2_init, r_3_init, r_4_init, l_1_init, theta_2_1_init, theta_2_2_init = params_init
+    points_deired = np.array([[0.072, 0.1], [0.023, 0.018]])
+    theta_2_vec = np.array([[theta_2_1_init], [theta_2_2_init]])
+    points_result = np.zeros((2, 2))
+    phi_0 = 2 * math.pi - phi_my_init
+    theta_1 = -math.atan2(x_4_1_init, y_4_1_init)
+    r_1 = math.sqrt(x_4_1_init**2 + y_4_1_init**2)
+    for i in range(np.shape(points_deired)[0]):
+        z = math.sqrt(r_1**2 + r_2_init**2 - 2 * r_1 * r_2_init * math.cos(theta_2_vec[i]))  # +-
+        try:
+            gamma = -math.acos((r_3_init**2 + r_4_init**2 - z * z) / (2 * r_3_init * r_4_init))  # +-
+        except ValueError:
+            print([r_1, r_2_init, r_3_init, r_4_init])
+            print(params_init)
+        alpha = -math.acos((z**2 - r_3_init**2 + r_4_init**2) / (2 * z * r_4_init))  # +-
+        beta = math.acos((z**2 - r_2_init**2 + r_1**2) / (2 * z * r_1))  # ?
+        theta_3 = math.pi - (alpha + beta + gamma)
+        x_p = x_1_0_init + r_2_init * math.cos(theta_2_vec[i] + theta_1) + l_1_init*math.cos(phi_0+theta_3+theta_1)
+        y_p = y_1_0_init + r_2_init * math.sin(theta_2_vec[i] + theta_1) + l_1_init*math.sin(phi_0+theta_3+theta_1)
+        points_result[i, :] = [x_p, y_p]
+    obj_func = 0
+    for i in range(np.shape(points_deired)[0]):
+        obj_func += (points_deired[0, i]-points_result[0, i])**2 + (points_deired[1, i]-points_result[1, i])**2
+    return obj_func
+
+
+def theta_2_1_limit_up(params_init):
+    _, x_4_1_init, y_4_1_init, _, _, r_2_init, r_3_init, r_4_init, _, theta_2_1_init, _ = params_init
+    r_1 = math.sqrt(x_4_1_init**2 + y_4_1_init**2)
+    try:
+        r = math.acos(((r_3_init + r_4_init) ** 2 - r_1 ** 2 - r_2_init ** 2) / (-2 * r_1 * r_2_init)) - theta_2_1_init
+    except ValueError:
+        r = -1
+    return r
+
+
+def theta_2_2_limit_up(params_init):
+    _, x_4_1_init, y_4_1_init, _, _, r_2_init, r_3_init, r_4_init, _, _, theta_2_2_init = params_init
+    r_1 = math.sqrt(x_4_1_init**2 + y_4_1_init**2)
+    try:
+        r = math.acos(((r_3_init+r_4_init)**2-r_1**2-r_2_init**2)/(-2*r_1*r_2_init))-theta_2_2_init
+    except ValueError:
+        r = -1
+    return r
+
+
+def theta_comp(params_init):
+    _, _, _, _, _, _, _, _, _, theta_2_1_init, theta_2_2_init = params_init
+    return theta_2_1_init - theta_2_2_init
+
+
+def grashof_crit(params_init):
+    _, x_4_1_init, y_4_1_init, _, _, r_2_init, r_3_init, r_4_init, _, _, _ = params_init
+    r_1 = math.sqrt(x_4_1_init**2 + y_4_1_init**2)
+    return r_3_init + r_2_init - r_1 - r_4_init
+
+
+def smallest_link(params_init):
+    _, x_4_1_init, y_4_1_init, _, _, r_2_init, r_3_init, r_4_init, _, _, _ = params_init
+    r_1 = math.sqrt(x_4_1_init**2 + y_4_1_init**2)
+    return min([r_1, r_2_init, r_4_init])-r_3_init
 
 
 if __name__ == '__main__':
-    theta_2 = np.linspace(80, 20, num=100)
-    mech = Four_bar(math.radians(theta_2[0]))
+    phi_my = math.radians(160)
+    x_4_1 = 0.007
+    y_4_1 = 0.023
+    x_1_0 = 0.1
+    y_1_0 = 0.045
+    r_2 = 0.07736
+    r_3 = 0.015
+    r_4 = 0.065
+    l_1 = 0.0325
+    theta_2 = np.linspace(-87.4, 87.4, num=360)
+    params = [phi_my, x_4_1, y_4_1, x_1_0, y_1_0, r_2, r_3, r_4, l_1, math.radians(theta_2[0])]
+    de_params = [phi_my, x_4_1, y_4_1, x_1_0, y_1_0, r_2, r_3, r_4, l_1, math.radians(80), math.radians(20)]
+    mech = Four_bar(params)
+    bounds = [(phi_my*0.8, phi_my*1.2), (0, x_4_1*1.2), (0, y_4_1*1.2), (0, x_1_0*1.2), (0, y_1_0*1.2),
+              (r_2*0.8, r_2*1.2), (r_3*0.8, r_3*1.2), (r_4*0.8, r_4*1.2), (0, l_1*1.5), (0, math.radians(90)),
+              (0, math.radians(90))]
+    nlc_1 = NonlinearConstraint(theta_2_1_limit_up, 0, np.inf)
+    nlc_2 = NonlinearConstraint(theta_2_2_limit_up, 0, np.inf)
+    nlc_3 = NonlinearConstraint(theta_comp, 0, np.inf)
+    nlc_4 = NonlinearConstraint(grashof_crit, 0, np.inf)
+    nlc_5 = NonlinearConstraint(smallest_link, 0, np.inf)
+    result = differential_evolution(de_mech_calc, bounds, constraints=(nlc_1, nlc_2, nlc_3, nlc_4, nlc_5))
+    print(result)
     fig = plt.figure()
-    ax = fig.add_subplot(111, autoscale_on=False, xlim=(0.05, 0.2), ylim=(0, 0.18))
+    ax = fig.add_subplot(111, autoscale_on=False, xlim=(0.05, 0.23), ylim=(0, 0.18))
     ax.set_aspect('equal')
     ax.grid()
     line_1, = ax.plot([], [], 'o-', lw=2)
     line_2, = ax.plot([], [], 'o-', lw=2)
     line_3, = ax.plot([], [], 'o-', lw=2)
-    # mech.mech_draw(line_1, line_2, line_3)
     ani = animation.FuncAnimation(fig, animate, len(theta_2), fargs=[mech, theta_2, line_1, line_2, line_3],
                                   interval=50)
     plt.show()
