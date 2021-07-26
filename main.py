@@ -140,7 +140,7 @@ def longest_link(params_init):
 
 
 if __name__ == '__main__':
-    phi_my = math.radians(160)
+    phi_my = 160
     x_4_1 = 0.007
     y_4_1 = 0.023
     x_1_0 = -0.1
@@ -150,13 +150,15 @@ if __name__ == '__main__':
     r_4 = 0.065
     l_1 = 0.0325
 
-    bounds = [(phi_my, phi_my), (0, x_4_1*1.2), (0, y_4_1*1.2), (x_1_0*1.2, 0), (0, y_1_0*1.2),
+    bounds = [(math.radians(phi_my), math.radians(phi_my)), (0, x_4_1*1.2), (0, y_4_1*1.2), (x_1_0*1.2, 0), (0, y_1_0*1.2),
               (r_2*0.8, r_2*1.2), (r_3*0.8, r_3*1.2), (r_4*0.8, r_4*1.2), (l_1, l_1),
               (math.radians(70), math.radians(90)), (0, math.radians(30))]
+    theta_3_opened = 3*math.pi - math.atan2(x_4_1, y_4_1)-math.radians(phi_my)-math.pi/2
+    print(math.degrees(theta_3_opened))
+    theta_3_closed = 3*math.pi - math.atan2(x_4_1, y_4_1)-math.radians(phi_my)-3*math.pi/2
+    points_desired = ([-0.072, 0.15, theta_3_opened], [-0.023, 0.018, theta_3_closed])
 
-    points_desired = ([-0.072, 0.15, math.radians(268.83)], [-0.023, 0.018, math.radians(88.83)])
-
-    de_params = [phi_my, x_4_1, y_4_1, x_1_0, y_1_0, r_2, r_3, r_4, l_1, math.radians(80), math.radians(20)]
+    de_params = [math.radians(phi_my), x_4_1, y_4_1, x_1_0, y_1_0, r_2, r_3, r_4, l_1, math.radians(80), math.radians(20)]
     # mech = Four_bar(de_params[:-1])
     nlc_1 = NonlinearConstraint(theta_2_1_limit_up, 0, np.inf)
     nlc_2 = NonlinearConstraint(theta_2_2_limit_up, 0, np.inf)
