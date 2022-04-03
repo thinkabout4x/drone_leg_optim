@@ -1,6 +1,9 @@
 # Algoritmh for non Grashof four bar mechanism syntesis using differential evolution.
 
-It is used to get machanism parameters based on the positions and orientations of the output link at predetermined points
+It is used to get machanism parameters based on the positions and orientations of the output link at predetermined points.
+Applied for folding drone arm mechanism to find its geometrical parameters using geometrical restrictions.
+
+<img src="img.png" width="250" height="250">
 
 ## Links
 
